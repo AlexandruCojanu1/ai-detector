@@ -15,14 +15,17 @@ from core.orchestrator import Orchestrator
 
 app = FastAPI(title="AI Image Detector")
 
-app.mount("/static", StaticFiles(directory="frontend"), name="static")
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+FRONTEND_DIR = os.path.join(BASE_DIR, "frontend")
+
+app.mount("/static", StaticFiles(directory=FRONTEND_DIR), name="static")
 
 orchestrator = Orchestrator()
 
 
 @app.get("/", response_class=HTMLResponse)
 async def root():
-    with open("frontend/index.html", "r") as f:
+    with open(os.path.join(FRONTEND_DIR, "index.html"), "r") as f:
         return f.read()
 
 
