@@ -9,7 +9,6 @@ from layers.pixel_forensics import PixelForensicsAnalyzer
 from layers.frequency_domain import FrequencyDomainAnalyzer
 from layers.visual_anomalies import VisualAnomalyAnalyzer
 from layers.provenance import ProvenanceAnalyzer
-from core.summarizer import generate_summary
 
 
 WEIGHTS = {
@@ -97,12 +96,6 @@ class Orchestrator:
             if result.get("gan_fingerprint"):
                 report["gan_fingerprint_detected"] = True
                 break
-
-        # Generate AI summary
-        try:
-            report["ai_summary"] = generate_summary(report)
-        except Exception:
-            report["ai_summary"] = None
 
         return report
 
