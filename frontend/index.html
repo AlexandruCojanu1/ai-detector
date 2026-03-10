@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="ro">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Image Detector — Forensic Analysis</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Inter:wght@300;400;600&display=swap');
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0f172a;
+            color: #f8fafc;
+        }
+
+        h1,
+        h2,
+        h3,
+        .mono {
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .drop-zone {
+            border: 2px dashed #475569;
+            transition: all 0.3s ease;
+        }
+
+        .drop-zone.dragover {
+            border-color: #3b82f6;
+            background-color: rgba(59, 130, 246, 0.1);
+        }
+
+        .loader {
+            border-top-color: #3b82f6;
+            -webkit-animation: spinner 1.5s linear infinite;
+            animation: spinner 1.5s linear infinite;
+        }
+
+        @keyframes spinner {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #1e293b;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #475569;
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #64748b;
+        }
+    </style>
+</head>
+
+<body class="min-h-screen flex flex-col items-center p-4 md:p-8">
+
+    <header class="w-full max-w-5xl mb-8 border-b border-slate-800 pb-6">
+        <div class="flex items-center gap-3">
+            <svg class="w-8 h-8 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z">
+                </path>
+            </svg>
+            <div>
+                <h1 class="text-3xl font-bold tracking-tight text-white">AI Image Detector</h1>
+                <p class="text-slate-400 mt-1">Multi-Layer Forensic Analysis Engine v1.0</p>
+            </div>
+        </div>
+    </header>
+
+    <main class="w-full max-w-5xl grid grid-cols-1 lg:grid-cols-12 gap-8">
+        <!-- Sidebar / Upload Area -->
+        <div class="lg:col-span-4 space-y-6">
+            <div class="bg-slate-800/50 border border-slate-700 rounded-xl p-6">
+                <h2 class="text-lg font-semibold mb-4 text-white">Analiză Nouă</h2>
+
+                <form id="uploadForm">
+                    <div id="dropZone" class="drop-zone rounded-lg p-8 text-center cursor-pointer mb-4">
+                        <svg class="mx-auto h-12 w-12 text-slate-400 mb-3" stroke="currentColor" fill="none"
+                            viewBox="0 0 48 48">
+                            <path
+                                d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02"
+                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                        </svg>
+                        <p class="text-sm text-slate-300">Încarcă sau trage fișierul aici</p>
+                        <p class="text-xs text-slate-500 mt-1">JPG, PNG, WebP (max. 10MB)</p>
+                        <input type="file" id="fileInput" name="file" class="hidden"
+                            accept="image/jpeg, image/png, image/webp">
+                    </div>
+
+                    <div id="previewContainer"
+                        class="hidden mb-4 rounded-lg overflow-hidden border border-slate-700 bg-black">
+                        <img id="imagePreview" class="w-full h-auto max-h-48 object-contain" src="" alt="Preview">
+                        <div class="p-2 bg-slate-900 border-t border-slate-700 flex justify-between items-center">
+                            <span id="fileName" class="text-xs text-slate-400 truncate mono"></span>
+                            <button type="button" id="removeBtn"
+                                class="text-xs text-red-400 hover:text-red-300">Șterge</button>
+                        </div>
+                    </div>
+
+                    <button type="submit" id="submitBtn" disabled
+                        class="w-full py-2.5 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 focus:ring-offset-slate-900 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+                        Inițiază Scanarea Forensică
+                    </button>
+                </form>
+            </div>
+
+            <div class="bg-slate-800/30 border border-slate-700/50 rounded-xl p-5 text-sm">
+                <h3 class="font-semibold text-slate-300 mb-2 mono text-xs uppercase tracking-wider">Metode de Detecție:
+                </h3>
+                <ul class="space-y-2 text-slate-400">
+                    <li class="flex items-center gap-2">
+                        <div class="w-1.5 h-1.5 rounded-full bg-indigo-400"></div> Metadata & Origin Tracing
+                    </li>
+                    <li class="flex items-center gap-2">
+                        <div class="w-1.5 h-1.5 rounded-full bg-cyan-400"></div> Pixel-Level Forensics (ELA, LBP)
+                    </li>
+                    <li class="flex items-center gap-2">
+                        <div class="w-1.5 h-1.5 rounded-full bg-emerald-400"></div> Frequency Domain (FFT, DCT)
+                    </li>
+                    <li class="flex items-center gap-2">
+                        <div class="w-1.5 h-1.5 rounded-full bg-amber-400"></div> Structural/Visual Anomalies
+                    </li>
+                    <li class="flex items-center gap-2">
+                        <div class="w-1.5 h-1.5 rounded-full bg-rose-400"></div> Digital Provenance & Watermarks
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Results Area -->
+        <div class="lg:col-span-8 space-y-6">
+
+            <!-- Loading State -->
+            <div id="loadingState"
+                class="hidden bg-slate-800/30 border border-slate-700 rounded-xl p-12 text-center h-full flex flex-col justify-center items-center h-[500px]">
+                <div class="loader w-12 h-12 border-4 border-slate-600 rounded-full mb-6"></div>
+                <h3 class="text-xl font-medium text-white mb-2">Motorul Forensic Procesează</h3>
+                <p class="text-slate-400 text-sm mono" id="loadingText">Se execută Analiza Spectrală (FFT)...</p>
+                <div class="w-64 bg-slate-700 rounded-full h-1.5 mt-6 overflow-hidden">
+                    <div id="progressBar" class="bg-blue-500 h-1.5 rounded-full w-0 transition-all duration-300"></div>
+                </div>
+            </div>
+
+            <!-- Empty State -->
+            <div id="emptyState"
+                class="bg-slate-800/30 border border-slate-700 rounded-xl p-12 text-center h-full border-dashed flex flex-col justify-center items-center h-[500px]">
+                <svg class="w-16 h-16 text-slate-600 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                        d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 002-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10">
+                    </path>
+                </svg>
+                <h3 class="text-xl font-medium text-slate-300 mb-1">Așteptare Imagine</h3>
+                <p class="text-slate-500 max-w-sm">Încarcă o imagine în panoul din stânga pentru a rula cele 5 straturi
+                    de analiză.</p>
+            </div>
+
+            <!-- Results State -->
+            <div id="resultsState" class="hidden space-y-6">
+
+                <!-- Main KPI -->
+                <div class="bg-slate-800 border border-slate-700 rounded-xl overflow-hidden relative">
+                    <div id="verdictBanner" class="absolute top-0 left-0 w-full h-1 bg-slate-600"></div>
+                    <div class="p-6 md:p-8 flex flex-col md:flex-row md:items-center gap-8 justify-between">
+
+                        <div>
+                            <h2 class="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-1">Rezultat
+                                Analiză</h2>
+                            <div class="flex items-baseline gap-3">
+                                <span id="verdictValue" class="text-3xl md:text-4xl font-bold mono">Analiză
+                                    Completă</span>
+                            </div>
+                            <div class="mt-4 flex gap-4 text-sm text-slate-400">
+                                <div><span class="block text-xs uppercase tracking-wider text-slate-500">Timp de
+                                        Rulare</span> <span id="timeValue" class="mono text-white">0.00s</span></div>
+                                <div><span class="block text-xs uppercase tracking-wider text-slate-500">Amprentă
+                                        GAN</span> <span id="ganValue" class="mono text-white">Nedetectat</span></div>
+                            </div>
+                        </div>
+
+                        <!-- Gauge/Score -->
+                        <div class="relative w-32 h-32 shrink-0 self-center">
+                            <svg class="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
+                                <path class="text-slate-700" stroke-width="3" stroke="currentColor" fill="none"
+                                    d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                                <path id="scoreCircle"
+                                    class="text-blue-500 drop-shadow-[0_0_8px_rgba(59,130,246,0.5)] transition-all duration-1000 ease-out"
+                                    stroke-dasharray="0, 100" stroke-width="3" stroke-linecap="round"
+                                    stroke="currentColor" fill="none"
+                                    d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                            </svg>
+                            <div class="absolute inset-0 flex flex-col items-center justify-center">
+                                <span id="scoreValue" class="text-3xl font-bold mono">0%</span>
+                                <span class="text-[10px] text-slate-400 uppercase tracking-wide">Scor AI</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- AI Summary (Gemini) -->
+                <div
+                    class="bg-gradient-to-br from-indigo-900/40 to-slate-800/40 border border-indigo-500/30 rounded-xl p-6 relative overflow-hidden">
+                    <div class="absolute -right-4 -top-4 text-indigo-500/10">
+                        <svg class="w-32 h-32" fill="currentColor" viewBox="0 0 24 24">
+                            <path
+                                d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" />
+                        </svg>
+                    </div>
+                    <div class="relative z-10">
+                        <div class="flex items-center gap-2 mb-3">
+                            <svg class="w-5 h-5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                            </svg>
+                            <h3 class="font-semibold text-indigo-300">Rezumat Interactiv (Gemini AI)</h3>
+                        </div>
+                        <div id="aiSummary" class="text-sm text-slate-300 leading-relaxed space-y-3 prose prose-invert">
+                            <!-- Text generat de Gemini va apărea aici -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Detailed Layer Reports -->
+                <div class="space-y-4" id="layersContainer">
+                    <!-- Vor fi injectate prin JS -->
+                </div>
+
+            </div>
+        </div>
+    </main>
+
+    <footer class="w-full max-w-5xl mt-12 py-6 border-t border-slate-800 text-center text-sm text-slate-500">
+        AI Image Detector — Construit pentru analiză forensică avansată. Nu oferă garanții 100% absolute.
+    </footer>
+
+    <template id="layerTemplate">
+        <div class="bg-slate-800/50 border border-slate-700 rounded-xl overflow-hidden">
+            <button
+                class="w-full p-4 flex items-center justify-between text-left hover:bg-slate-750 transition-colors toggle-layer">
+                <div class="flex items-center gap-4">
+                    <div
+                        class="layer-badge w-10 h-10 rounded-lg flex items-center justify-center font-bold mono text-sm">
+                    </div>
+                    <div>
+                        <h4 class="font-medium text-slate-200 layer-title">Titlu</h4>
+                        <div class="text-xs text-slate-500 layer-subtitle mono mt-0.5">scor parțial: 0/100</div>
+                    </div>
+                </div>
+                <svg class="w-5 h-5 text-slate-400 transform transition-transform chevron" fill="none"
+                    stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                </svg>
+            </button>
+            <div class="p-4 pt-0 border-t border-slate-700/50 hidden content-box">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
+                    <div>
+                        <h5 class="text-xs uppercase tracking-wider text-slate-500 mb-2 font-semibold">Observații
+                            Tehnice</h5>
+                        <ul class="space-y-2 text-sm text-slate-300 findings-list list-disc pl-4 marker:text-slate-600">
+                        </ul>
+                    </div>
+                    <div class="heatmap-container hidden">
+                        <h5 class="text-xs uppercase tracking-wider text-slate-500 mb-2 font-semibold">Reprezentare
+                            Vizuală</h5>
+                        <img class="w-full rounded border border-slate-700 heatmap-img" src="" alt="Heatmap">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </template>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const dropZone = document.getElementById('dropZone');
+            const fileInput = document.getElementById('fileInput');
+            const uploadForm = document.getElementById('uploadForm');
+            const submitBtn = document.getElementById('submitBtn');
+            const previewContainer = document.getElementById('previewContainer');
+            const imagePreview = document.getElementById('imagePreview');
+            const fileName = document.getElementById('fileName');
+            const removeBtn = document.getElementById('removeBtn');
+            
+            const emptyState = document.getElementById('emptyState');
+            const loadingState = document.getElementById('loadingState');
+            const resultsState = document.getElementById('resultsState');
+            const progressBar = document.getElementById('progressBar');
+            const loadingText = document.getElementById('loadingText');
+
+            let currentFile = null;
+
+            // Drag and Drop Handlers
+            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                dropZone.addEventListener(eventName, preventDefaults, false);
+            });
+
+            function preventDefaults(e) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+
+            ['dragenter', 'dragover'].forEach(eventName => {
+                dropZone.addEventListener(eventName, () => dropZone.classList.add('dragover'), false);
+            });
+
+            ['dragleave', 'drop'].forEach(eventName => {
+                dropZone.addEventListener(eventName, () => dropZone.classList.remove('dragover'), false);
+            });
+
+            dropZone.addEventListener('drop', (e) => {
+                const dt = e.dataTransfer;
+                const files = dt.files;
+                handleFiles(files);
+            });
+
+            dropZone.addEventListener('click', () => fileInput.click());
+            
+            fileInput.addEventListener('change', function() {
+                handleFiles(this.files);
+            });
+
+            removeBtn.addEventListener('click', () => {
+                currentFile = null;
+                fileInput.value = '';
+                previewContainer.classList.add('hidden');
+                dropZone.classList.remove('hidden');
+                submitBtn.disabled = true;
+            });
+
+            function handleFiles(files) {
+                if (files.length > 0) {
+                    const file = files[0];
+                    if (!file.type.match('image.*')) {
+                        alert('Te rugăm să încarci doar imagini (JPG, PNG, WebP).');
+                        return;
+                    }
+                    
+                    if (file.size > 10 * 1024 * 1024) {
+                        alert('Fișier prea mare. Limita este de 10MB.');
+                        return;
+                    }
+
+                    currentFile = file;
+                    fileName.textContent = file.name;
+                    
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        imagePreview.src = e.target.result;
+                        dropZone.classList.add('hidden');
+                        previewContainer.classList.remove('hidden');
+                        submitBtn.disabled = false;
+                    };
+                    reader.readAsDataURL(file);
+                }
+            }
+
+            // Simulate loading steps
+            const loadingSteps = [
+                "Inițializare motor forensic...",
+                "Se execută analiza Metadata și XMP...",
+                "Analiză Pixel-Level (Error Level Analysis)...",
+                "Se analizează Amprenta de Zgomot (Noise Fingerprint)...",
+                "Procesare Transformata Fourier (FFT)...",
+                "Analiză Frecvențe Wavelet / DCT...",
+                "Detecție Anomalii Structurale și Iluminare...",
+                "Căutare Amprentă Digitală & SynthID...",
+                "Se compilează raportul Gemini AI..."
+            ];
+
+            function simulateLoading() {
+                let step = 0;
+                progressBar.style.width = '0%';
+                
+                const interval = setInterval(() => {
+                    step++;
+                    if (step < loadingSteps.length) {
+                        loadingText.textContent = loadingSteps[step];
+                        progressBar.style.width = `${(step / loadingSteps.length) * 100}%`;
+                    }
+                }, 800);
+                
+                return interval;
+            }
+
+            // Form Submit
+            uploadForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                if (!currentFile) return;
+
+                emptyState.classList.add('hidden');
+                resultsState.classList.add('hidden');
+                loadingState.classList.remove('hidden');
+                submitBtn.disabled = true;
+                
+                const simInterval = simulateLoading();
+
+                const formData = new FormData();
+                formData.append('file', currentFile);
+
+                try {
+                    const response = await fetch('/analyze', {
+                        method: 'POST',
+                        body: formData
+                    });
+
+                    clearInterval(simInterval);
+                    progressBar.style.width = '100%';
+
+                    if (!response.ok) {
+                        throw new Error(`Eroare server: ${response.status}`);
+                    }
+
+                    const data = await response.json();
+                    
+                    if (data.error) {
+                        throw new Error(data.error);
+                    }
+
+                    setTimeout(() => {
+                        renderResults(data);
+                        loadingState.classList.add('hidden');
+                        resultsState.classList.remove('hidden');
+                        submitBtn.disabled = false;
+                    }, 500);
+
+                } catch (error) {
+                    clearInterval(simInterval);
+                    alert("A apărut o eroare la analiză:\n" + error.message);
+                    loadingState.classList.add('hidden');
+                    emptyState.classList.remove('hidden');
+                    submitBtn.disabled = false;
+                }
+            });
+
+            // Dict de mapare nume
+            const layerNames = {
+                "metadata": "Metadate & Origine",
+                "pixel_forensics": "Analiză Pixeli (ELA)",
+                "frequency_domain": "Domeniul de Frecvență",
+                "visual_anomalies": "Anomalii Spațiale",
+                "provenance": "Proveniență / Watermarks"
+            };
+
+            function renderResults(data) {
+                // Scor și Verdict
+                const score = data.confidence || 0;
+                document.getElementById('scoreValue').textContent = `${score}%`;
+                document.getElementById('scoreCircle').style.strokeDasharray = `${score}, 100`;
+                
+                const verdictEl = document.getElementById('verdictValue');
+                const bannerEl = document.getElementById('verdictBanner');
+                const scoreCircle = document.getElementById('scoreCircle');
+                
+                if (data.verdict === 'AI_GENERATED') {
+                    verdictEl.textContent = 'Aproape sigur Generat de AI';
+                    verdictEl.className = 'text-2xl md:text-3xl font-bold mono text-red-400';
+                    bannerEl.className = 'absolute top-0 left-0 w-full h-1 bg-red-500';
+                    scoreCircle.className = 'text-red-500 drop-shadow-[0_0_8px_rgba(239,68,68,0.5)] transition-all duration-1000 ease-out';
+                } else if (data.verdict === 'LIKELY_AI') {
+                    verdictEl.textContent = 'Probabil Generat/Editat AI';
+                    verdictEl.className = 'text-2xl md:text-3xl font-bold mono text-orange-400';
+                    bannerEl.className = 'absolute top-0 left-0 w-full h-1 bg-orange-500';
+                    scoreCircle.className = 'text-orange-500 drop-shadow-[0_0_8px_rgba(249,115,22,0.5)] transition-all duration-1000 ease-out';
+                } else if (data.verdict === 'UNCERTAIN') {
+                    verdictEl.textContent = 'Neconcludent / Mixt';
+                    verdictEl.className = 'text-2xl md:text-3xl font-bold mono text-yellow-400';
+                    bannerEl.className = 'absolute top-0 left-0 w-full h-1 bg-yellow-500';
+                    scoreCircle.className = 'text-yellow-500 drop-shadow-[0_0_8px_rgba(234,179,8,0.5)] transition-all duration-1000 ease-out';
+                } else {
+                    verdictEl.textContent = 'Probabil Imagine Reală';
+                    verdictEl.className = 'text-2xl md:text-3xl font-bold mono text-green-400';
+                    bannerEl.className = 'absolute top-0 left-0 w-full h-1 bg-green-500';
+                    scoreCircle.className = 'text-green-500 drop-shadow-[0_0_8px_rgba(34,197,94,0.5)] transition-all duration-1000 ease-out';
+                }
+
+                document.getElementById('timeValue').textContent = `${data.analysis_time_seconds || 0}s`;
+                
+                const ganEl = document.getElementById('ganValue');
+                if (data.gan_fingerprint_detected) {
+                    ganEl.textContent = 'Pozitiv (Detectat)';
+                    ganEl.classList.add('text-red-400');
+                    ganEl.classList.remove('text-white');
+                } else {
+                    ganEl.textContent = 'Negativ';
+                    ganEl.classList.add('text-white');
+                    ganEl.classList.remove('text-red-400');
+                }
+
+                // AI Summary
+                const summaryHtml = data.ai_summary 
+                    ? data.ai_summary.split('\n\n').map(p => `<p>${p}</p>`).join('') 
+                    : '<p>Rezumatul nu este disponibil.</p>';
+                document.getElementById('aiSummary').innerHTML = summaryHtml;
+
+                // Layers
+                const container = document.getElementById('layersContainer');
+                container.innerHTML = '';
+                const template = document.getElementById('layerTemplate');
+
+                if (data.layers) {
+                    Object.entries(data.layers).forEach(([key, layer], index) => {
+                        const clone = template.content.cloneNode(true);
+                        
+                        // Set colors based on score
+                        const lScore = layer.score || 0;
+                        const badge = clone.querySelector('.layer-badge');
+                        badge.textContent = `${lScore}`;
+                        
+                        if (lScore >= 75) {
+                            badge.classList.add('bg-red-500/20', 'text-red-400', 'border', 'border-red-500/50');
+                        } else if (lScore >= 50) {
+                            badge.classList.add('bg-orange-500/20', 'text-orange-400', 'border', 'border-orange-500/50');
+                        } else if (lScore >= 25) {
+                            badge.classList.add('bg-yellow-500/20', 'text-yellow-400', 'border', 'border-yellow-500/50');
+                        } else {
+                            badge.classList.add('bg-green-500/20', 'text-green-400', 'border', 'border-green-500/50');
+                        }
+
+                        clone.querySelector('.layer-title').textContent = layerNames[key] || key;
+                        clone.querySelector('.layer-subtitle').textContent = `Index Risc: ${lScore}/100`;
+
+                        // Add findings
+                        const ul = clone.querySelector('.findings-list');
+                        if (layer.findings && layer.findings.length > 0) {
+                            layer.findings.forEach(f => {
+                                const li = document.createElement('li');
+                                li.textContent = f;
+                                ul.appendChild(li);
+                            });
+                        } else {
+                            const li = document.createElement('li');
+                            li.textContent = "Nu au fost detectate anomalii majore.";
+                            li.className = "text-slate-500 italic";
+                            ul.appendChild(li);
+                        }
+
+                        // Add heatmaps
+                        let heatmapStr = null;
+                        if (layer.heatmap) {
+                            heatmapStr = layer.heatmap;
+                        } else if (data.heatmaps && data.heatmaps[key]) {
+                            heatmapStr = data.heatmaps[key];
+                        }
+
+                        if (heatmapStr) {
+                            const hmCont = clone.querySelector('.heatmap-container');
+                            const hmImg = clone.querySelector('.heatmap-img');
+                            hmImg.src = `data:image/png;base64,${heatmapStr}`;
+                            hmCont.classList.remove('hidden');
+                        }
+
+                        // Toggle Logic
+                        const btn = clone.querySelector('.toggle-layer');
+                        const content = clone.querySelector('.content-box');
+                        const chevron = clone.querySelector('.chevron');
+                        
+                        // Deschidem primul layer automat
+                        if (index === 0) {
+                            content.classList.remove('hidden');
+                            chevron.classList.add('rotate-180');
+                        }
+
+                        btn.addEventListener('click', () => {
+                            content.classList.toggle('hidden');
+                            chevron.classList.toggle('rotate-180');
+                        });
+
+                        container.appendChild(clone);
+                    });
+                }
+            }
+        });
+    </script>
+</body>
+
+</html>
