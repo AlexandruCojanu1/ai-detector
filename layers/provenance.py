@@ -34,6 +34,11 @@ class ProvenanceAnalyzer:
         if synth_gan:
             gan_fingerprint = True
 
+        # Compound bonus: LSB suspicious + spectral anomaly
+        if lsb_score >= 15 and synth_score >= 15:
+            findings.append("Both LSB and spectral analysis indicate hidden watermark/AI signature — compound bonus applied")
+            score += 15
+
         score = max(0, min(100, score))
         
         return {
@@ -59,7 +64,10 @@ class ProvenanceAnalyzer:
             
             # Completely random LSB (entropy ~ 1.0) can sometimes hide watermarks
             # but AI models often have very pure LSB plains
-            if entropy < 0.1:
+            if entropy >= 0.95:
+                findings.append("Maximum LSB entropy — suspiciously random bit distribution (steganography/AI watermark indicator)")
+                score += 20
+            elif entropy < 0.1:
                 findings.append("Unnaturally pure LSB plane — AI models often generate 'clean' 8-bit values without analog noise")
                 score += 15
             elif entropy < 0.5:
@@ -72,7 +80,7 @@ class ProvenanceAnalyzer:
                 lsb_crop = lsb[:128, :128]
                 if np.sum(lsb_crop) / (128*128) > 0.4 and np.sum(lsb_crop) / (128*128) < 0.6:
                     findings.append("Dense LSB usage — possible invisible watermark/steganography payload")
-                    # No score increment as it could be noise, just noted
+                    score += 15
 
         except Exception as e:
             findings.append(f"LSB analysis error: {str(e)}")
@@ -108,7 +116,15 @@ class ProvenanceAnalyzer:
             findings.append(f"High-frequency spectral peaks: {peaks}")
             
             # Invisible watermarks often inject highly localized frequency peaks
-            if peaks > 10 and peaks < 100:
+            if peaks > 500:
+                findings.append("Massive spectral anomaly — strong indicator of AI watermark or generation artifacts")
+                score += 25
+                gan_detected = True
+            elif peaks > 100:
+                findings.append("Many anomalous spectral peaks — likely invisible AI watermark")
+                score += 20
+                gan_detected = True
+            elif peaks > 10:
                 findings.append("Anomalous spectral peaks detected — possible invisible AI watermark (e.g. Google SynthID)")
                 score += 30
                 gan_detected = True

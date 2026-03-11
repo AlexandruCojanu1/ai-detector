@@ -48,6 +48,11 @@ class FrequencyDomainAnalyzer:
         findings.extend(wav_findings)
         score += wav_score
 
+        # Compound bonus: both DCT and wavelet indicate AI
+        if dct_score >= 10 and wav_score >= 10:
+            findings.append("Both DCT and wavelet analysis indicate AI generation — compound bonus applied")
+            score += 20
+
         score = max(0, min(100, score))
         
         result = {
@@ -134,12 +139,15 @@ class FrequencyDomainAnalyzer:
             findings.append(f"High frequency DCT power ratio: {high_freq_power:.4f}")
             
             # AI models often struggle with high-frequency details leading to lower power
-            if high_freq_power < 0.05:
+            if high_freq_power < 0.02:
+                findings.append("Extremely low high-frequency content — strong AI indicator")
+                score += 30
+            elif high_freq_power < 0.05:
                 findings.append("Very low high-frequency content — typical of AI generation")
-                score += 15
+                score += 25
             elif high_freq_power < 0.1:
                 findings.append("Lower than normal high-frequency content")
-                score += 5
+                score += 10
 
         except Exception as e:
             findings.append(f"DCT analysis error: {str(e)}")
@@ -165,12 +173,15 @@ class FrequencyDomainAnalyzer:
             findings.append(f"Wavelet detail energy: {total_detail_energy:.6f}")
             
             # AI models generate unnaturally smooth images lacking true high-frequency detail energy
-            if total_detail_energy < 0.005:
-                findings.append("Extremely low detail energy in wavelet sub-bands — AI indicator")
-                score += 20
+            if total_detail_energy < 0.002:
+                findings.append("Extremely low detail energy in wavelet sub-bands — strong AI indicator")
+                score += 30
+            elif total_detail_energy < 0.005:
+                findings.append("Very low detail energy in wavelet sub-bands — AI indicator")
+                score += 25
             elif total_detail_energy < 0.01:
                 findings.append("Low detail energy in wavelet sub-bands")
-                score += 10
+                score += 15
                 
             # Check for grid artifacts (mismatch between H and V energy)
             energy_ratio = min(lh_energy, hl_energy) / (max(lh_energy, hl_energy) + 1e-10)

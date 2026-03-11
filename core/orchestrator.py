@@ -51,6 +51,33 @@ class Orchestrator:
             if result.get("override"):
                 overrides.append(result["override"])
 
+        # Metadata-based dampening: strong metadata authenticity reduces
+        # false positives from pixel/frequency analysis on edited photos
+        metadata_score = layer_results.get("metadata", {}).get("score", 50)
+
+        if metadata_score <= 10:
+            # Strong real-camera evidence (full EXIF, known software, raw filename)
+            dampening = 0.5
+            dampen_label = "50%"
+        elif metadata_score <= 25:
+            # Moderate real evidence
+            dampening = 0.75
+            dampen_label = "25%"
+        else:
+            dampening = None
+
+        if dampening is not None:
+            for name, result in layer_results.items():
+                if name == "metadata" or result.get("error"):
+                    continue
+                original = result["score"]
+                if original > 0:
+                    result["score"] = int(original * dampening)
+                    result["findings"].append(
+                        f"Score adjusted ({original} → {result['score']}) — "
+                        f"metadata indicates authentic origin (dampened {dampen_label})"
+                    )
+
         # Calculate weighted score
         weighted_score = 0
         total_weight = 0
@@ -91,11 +118,12 @@ class Orchestrator:
         if heatmaps:
             report["heatmaps"] = heatmaps
 
-        # Collect GAN fingerprint
-        for name, result in layer_results.items():
-            if result.get("gan_fingerprint"):
-                report["gan_fingerprint_detected"] = True
-                break
+        # Collect GAN fingerprint (suppress if metadata proves authenticity)
+        if metadata_score > 10:
+            for name, result in layer_results.items():
+                if result.get("gan_fingerprint"):
+                    report["gan_fingerprint_detected"] = True
+                    break
 
         return report
 

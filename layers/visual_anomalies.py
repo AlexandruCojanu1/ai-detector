@@ -35,6 +35,16 @@ class VisualAnomalyAnalyzer:
         findings.extend(dof_findings)
         score += dof_score
 
+        # Compound bonus: multiple visual anomalies together
+        ai_indicators = sum([
+            dof_score >= 10,    # Shallow DoF triggered
+            color_score >= 10,  # Color anomaly triggered
+            edge_score >= 10,   # Edge anomaly triggered
+        ])
+        if ai_indicators >= 2:
+            findings.append("Multiple visual anomalies detected — compound bonus applied")
+            score += 15
+
         score = max(0, min(100, score))
         return {"score": score, "findings": findings}
 
@@ -53,7 +63,7 @@ class VisualAnomalyAnalyzer:
             # AI images often have either too few details (oversmooth) or hallucinated micro-details
             if edge_density < 0.02:
                 findings.append("Unnaturally low edge density — possible AI smoothing")
-                score += 10
+                score += 15
             elif edge_density > 0.15:
                 findings.append("Unnaturally high edge density — possible AI detail hallucination")
                 score += 15
@@ -85,15 +95,18 @@ class VisualAnomalyAnalyzer:
             findings.append(f"Mean saturation: {mean_saturation:.2f}")
             
             # Midjourney / DALL-E tend to be highly saturated and vibrant
-            if mean_saturation > 150:
+            if mean_saturation > 160:
                 findings.append("Extremely high color saturation — typical of AI models (e.g. Midjourney output)")
+                score += 20
+            elif mean_saturation > 130:
+                findings.append("High color saturation — common in AI-generated images")
                 score += 15
                 
             # Contrast check
             std_value = np.std(v_channel)
             if std_value > 80:
                 findings.append("Hyper-contrast detected — common in AI 'cinematic' prompts")
-                score += 10
+                score += 15
                 
         except Exception as e:
             findings.append(f"Color distribution error: {str(e)}")
@@ -119,9 +132,15 @@ class VisualAnomalyAnalyzer:
             findings.append(f"Sharp area ratio: {sharp_ratio:.4f}")
             
             # AI often fakes shallow depth of field very aggressively
-            if sharp_ratio < 0.1:
-                findings.append("Extremely shallow depth of field — aggressive background blur (AI prompt characteristic)")
-                score += 15
+            if sharp_ratio < 0.05:
+                findings.append("Extremely shallow depth of field — aggressive background blur (strong AI indicator)")
+                score += 30
+            elif sharp_ratio < 0.1:
+                findings.append("Very shallow depth of field — aggressive background blur (AI prompt characteristic)")
+                score += 20
+            elif sharp_ratio < 0.15:
+                findings.append("Shallow depth of field — possibly AI-generated blur")
+                score += 10
                 
         except Exception as e:
             findings.append(f"DoF analysis error: {str(e)}")

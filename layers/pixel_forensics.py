@@ -49,6 +49,16 @@ class PixelForensicsAnalyzer:
         findings.extend(texture_findings)
         score += texture_score
 
+        # Compound bonus: multiple pixel-level AI indicators together
+        ai_indicators = sum([
+            ela_score >= 25,      # ELA uniformity triggered
+            clone_score >= 15,    # Clone/repeated patterns triggered
+            texture_score >= 10,  # Texture uniformity triggered
+        ])
+        if ai_indicators >= 2:
+            findings.append("Multiple pixel-level AI indicators detected — compound bonus applied")
+            score += 15
+
         score = max(0, min(100, score))
 
         result = {"score": score, "findings": findings}
@@ -90,10 +100,13 @@ class PixelForensicsAnalyzer:
                 f"max: {max_ela:.2f}, CV: {cv:.2f}"
             )
 
-            # Evaluate uniformity
-            if cv < 0.8:
+            # Evaluate uniformity (graduated scoring)
+            if cv < 0.5:
+                findings.append("ELA distribution is extremely uniform — strong AI indicator")
+                score += 40
+            elif cv < 0.8:
                 findings.append("ELA distribution is abnormally uniform — AI indicator")
-                score += 25
+                score += 30
             elif cv < 1.2:
                 findings.append("ELA distribution is somewhat uniform")
                 score += 10
@@ -114,9 +127,12 @@ class PixelForensicsAnalyzer:
             if block_stds:
                 block_std_variance = np.std(block_stds)
                 findings.append(f"ELA block variance: {block_std_variance:.2f}")
-                if block_std_variance < 2.0:
+                if block_std_variance < 0.5:
                     findings.append("Very uniform block-level ELA — strong AI indicator")
-                    score += 15
+                    score += 25
+                elif block_std_variance < 2.0:
+                    findings.append("Uniform block-level ELA — AI indicator")
+                    score += 20
 
             # Generate heatmap
             heatmap = self._generate_heatmap(ela_scaled, "Error Level Analysis")
@@ -167,7 +183,7 @@ class PixelForensicsAnalyzer:
                 score += 15
             elif quad_variance > 0.5:
                 findings.append("Natural noise variation detected across quadrants")
-                score -= 5
+                score -= 2
 
             # Spectral flatness
             noise_fft = np.abs(np.fft.fft2(noise))
@@ -281,9 +297,12 @@ class PixelForensicsAnalyzer:
             if patch_entropies:
                 ent_var = np.std(patch_entropies)
                 findings.append(f"Texture entropy variance across patches: {ent_var:.4f}")
-                if ent_var < 0.3:
+                if ent_var < 0.1:
+                    findings.append("Extremely uniform texture across image — strong AI indicator")
+                    score += 20
+                elif ent_var < 0.3:
                     findings.append("Uniform texture across image — AI indicator")
-                    score += 10
+                    score += 15
 
         except Exception as e:
             findings.append(f"Texture analysis error: {str(e)}")

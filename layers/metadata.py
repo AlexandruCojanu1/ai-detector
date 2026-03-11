@@ -45,6 +45,13 @@ class MetadataAnalyzer:
             if xmp_override:
                 override = xmp_override
 
+            # Compound bonus: no EXIF + no XMP = very strong AI indicator
+            no_exif = exif_score >= 25
+            no_xmp = xmp_score >= 20
+            if no_exif and no_xmp:
+                findings.append("Complete absence of metadata (EXIF + XMP) — strong AI-generation indicator")
+                score += 30
+
             # Format origin check
             fmt_score, fmt_findings = self._format_origin_check(image_path)
             findings.extend(fmt_findings)
@@ -123,7 +130,7 @@ class MetadataAnalyzer:
 
         if xmp_start == -1 or xmp_end == -1:
             findings.append("No XMP metadata block found")
-            score += 5
+            score += 20
             return score, findings, override
 
         xmp_data = data[xmp_start : xmp_end + 12].decode("utf-8", errors="replace")
@@ -188,7 +195,7 @@ class MetadataAnalyzer:
 
             if fmt == "PNG":
                 findings.append("PNG format — common for AI generators")
-                score += 5
+                score += 15
 
             # Check DPI
             dpi = img.info.get("dpi")
